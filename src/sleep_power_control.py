@@ -1,3 +1,4 @@
+import glob
 import os
 import inotify.adapters
 import inotify.constants
@@ -10,11 +11,26 @@ SAVING_CPU_FREQ = os.environ.get("SAVING_CPU_FREQ")
 DISABLE_POWER_OFF_KB = os.environ.get("DISABLE_POWER_OFF_KB") == "yes"
 DISABLE_CPU_MIN_FREQ = os.environ.get("DISABLE_CPU_MIN_FREQ") == "yes"
 
+def find_internal_kb_kana():
+    kb_real_path = os.path.realpath(kb_device_path)
+    for led_path in glob.glob("/sys/class/leds/input*::kana"):
+        device_path = os.path.realpath(os.path.join(led_path, "device"))
+        if device_path.startswith(kb_real_path + "/"):
+            return os.path.join(led_path, "brightness")
+    return ""
+
+def set_kb_lock(locked):
+    kana_path = find_internal_kb_kana()
+    if not kana_path:
+        raise Exception("there's no matched keyboard Kana LED")
+    with open(kana_path, "w") as f:
+        f.write("1" if locked else "0")
+    print(f"kb lock state: {'locked' if locked else 'unlocked'}")
 
 def control_by_state(state):
     global kb_device_path
-    global kb_device_id
-    global usb_driver_path
+    # global kb_device_id
+    # global usb_driver_path
     global cpu_policy_path
 
     if state:
@@ -25,12 +41,13 @@ def control_by_state(state):
             with open(os.path.join(cpu_policy_path, "scaling_min_freq"), "w") as f:
                 f.write(default_cpu_freq_min)
             print(f"cpu freq min: {default_cpu_freq_min}")
-        if not DISABLE_POWER_OFF_KB:
-            with open(os.path.join(usb_driver_path, "bind"), "w") as f:
-                f.write(kb_device_id)
-            print("kb power state: bind")
         with open(os.path.join(kb_device_path, "power/control"), "w") as f:
             f.write("on")
+        if not DISABLE_POWER_OFF_KB:
+            set_kb_lock(False)
+            # with open(os.path.join(usb_driver_path, "bind"), "w") as f:
+            #     f.write(kb_device_id)
+            # print("kb power state: bind")
     else:
         if DISABLE_POWER_OFF_KB:
             # Only set autosuspend when not unbinding — unbinding handles power-off
@@ -39,9 +56,10 @@ def control_by_state(state):
             with open(os.path.join(kb_device_path, "power/control"), "w") as f:
                 f.write("auto")
         else:
-            with open(os.path.join(usb_driver_path, "unbind"), "w") as f:
-                f.write(kb_device_id)
-            print("kb power state: unbind")
+            set_kb_lock(True)
+            # with open(os.path.join(usb_driver_path, "unbind"), "w") as f:
+            #     f.write(kb_device_id)
+            # print("kb power state: unbind")
         if not DISABLE_CPU_MIN_FREQ:
             with open(os.path.join(cpu_policy_path, "scaling_min_freq"), "w") as f:
                 f.write(saving_cpu_freq_min)
@@ -54,8 +72,8 @@ def control_by_state(state):
 backlight_path = find_backlight()
 # drm_panel_path = find_drm_panel()
 kb_device_path = find_internal_kb()
-kb_device_id = os.path.basename(kb_device_path)
-usb_driver_path = "/sys/bus/usb/drivers/usb"
+# kb_device_id = os.path.basename(kb_device_path)
+# usb_driver_path = "/sys/bus/usb/drivers/usb"
 cpu_policy_path = "/sys/devices/system/cpu/cpufreq/policy0"
 
 if not backlight_path:
