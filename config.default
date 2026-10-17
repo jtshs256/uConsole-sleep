@@ -6,6 +6,10 @@
 # default 0.7
 #HOLD_TRIGGER_SEC=1.3
 
+### DOUBLE_PRESS_IGNORE_SEC --- [0.0~] --- Ignore short power key presses within this time(sec) after the screen was toggled
+# default 1.0
+#DOUBLE_PRESS_IGNORE_SEC=1.0
+
 ### SAVING_CPU_FREQ --- [100,100~] <min,max> --- Freq(MHz) for power saving
 # default 100,100 (depends on cpuinfo)
 #SAVING_CPU_FREQ=300,600

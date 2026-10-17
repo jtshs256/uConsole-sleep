@@ -128,10 +128,8 @@ i.add_watch(backlight_bl_path, mask=inotify.constants.IN_MODIFY)
 print(f"Monitoring {backlight_bl_path} for changes...")
 
 last_screen_state = ""
-while True:
+for _ in i.event_gen(yield_nones=False):
     try:
-        list(i.event_gen(yield_nones=False, timeout_s=1))
-
         with open(backlight_bl_path, "r") as f:
             screen_state = f.read().strip()
 

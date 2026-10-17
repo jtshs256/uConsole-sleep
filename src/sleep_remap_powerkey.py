@@ -13,6 +13,7 @@ from sleep_display_control import toggle_display
 EVENT_DEVICE = find_power_key()
 KEY_POWER = 116
 HOLD_TRIGGER_SEC = float(os.environ.get("HOLD_TRIGGER_SEC") or 0.7)
+DOUBLE_PRESS_IGNORE_SEC = float(os.environ.get("DOUBLE_PRESS_IGNORE_SEC") or 1.0)
 
 
 def timer_input_power_task(device):
@@ -30,6 +31,7 @@ with open(EVENT_DEVICE, "rb") as f:
 
     try:
         last_key_down_timestamp = 0
+        last_toggle_timestamp = 0
         input_power_timer = None
 
         while True:
@@ -63,7 +65,14 @@ with open(EVENT_DEVICE, "rb") as f:
                                 < HOLD_TRIGGER_SEC
                             ):
                                 input_power_timer.cancel()
-                                toggle_display()
+                                if (
+                                    current_time - last_toggle_timestamp
+                                    < DOUBLE_PRESS_IGNORE_SEC
+                                ):
+                                    print(f"SRP: power key ignored (repeated press).")
+                                else:
+                                    last_toggle_timestamp = current_time
+                                    toggle_display()
 
     finally:
         epoll.unregister(f.fileno())
